@@ -162,6 +162,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw new Error('Verification failed');
           }
 
+          // Update tasks completed count
+          const newCompletedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
+          const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
+          await updateTasksCompleted(newCompletedCount + dashboardCompletedCount);
+
+          // Add reward to balance
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            await updateUserBalance(task.reward);
+          }
           // Save successful submission
           const { data: newSubmission, error } = await supabase
             .from('task_submissions')

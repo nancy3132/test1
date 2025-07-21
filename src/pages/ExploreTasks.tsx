@@ -144,11 +144,6 @@ const ExploreTasks = () => {
   const handleVerificationComplete = async (taskId: string) => {
     try {
       await submitTask(taskId, { screenshot: 'verified', text: 'verified' });
-      
-      const task = tasks.find(t => t.id === taskId);
-      if (task) {
-        await updateUserBalance(task.reward);
-      }
 
       setShowSuccessNotification(true);
       setTimeout(() => setShowSuccessNotification(false), 3000);

@@ -131,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Update local state first
     const newBalance = user.balance + amount;
     const newTotalEarned = user.total_earned + amount;
+    // Update local state immediately
     setUser(prev => prev ? {
       ...prev,
       balance: newBalance,
@@ -151,7 +152,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (error) throw error;
+      if (!error && data) {
+        setUser(data);
+      }
     } catch (error) {
       console.error('Error updating balance:', error);
     }
@@ -160,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateTasksCompleted = async (count: number) => {
     if (!user) return;
 
+    // Update local state immediately
     // Update local state first
     setUser(prev => prev ? { ...prev, tasks_completed: count } : null);
 
@@ -174,7 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select()
         .single();
 
-      if (error) throw error;
+      if (!error && data) {
+        setUser(data);
+      }
     } catch (error) {
       console.error('Error updating tasks completed:', error);
     }
