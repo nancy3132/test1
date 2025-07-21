@@ -355,19 +355,19 @@ const Profile = () => {
                <div className="bg-gradient-to-br from-white/5 to-dark-gray/10 backdrop-blur-lg border border-white/10 rounded-xl px-4 py-3 shadow-[0_0_10px_rgba(0,255,178,0.03)]">
 
                   <p className="text-sm text-gray-400">Tasks Completed</p>
-                  <p className="text-xl font-bold">{user?.tasks_completed}</p>
+                  <p className="text-xl font-bold">{user?.tasks_completed || 0}</p>
                 </div>
                 
                <div className="bg-gradient-to-br from-white/5 to-dark-gray/10 backdrop-blur-lg border border-white/10 rounded-xl px-4 py-3 shadow-[0_0_10px_rgba(0,255,178,0.03)]">
 
                   <p className="text-sm text-gray-400">Total Earned</p>
-                  <p className="text-xl font-bold">${user?.total_earned.toFixed(2)}</p>
+                  <p className="text-xl font-bold">${(user?.total_earned || 0).toFixed(2)}</p>
                 </div>
                 
                <div className="bg-gradient-to-br from-white/5 to-dark-gray/10 backdrop-blur-lg border border-white/10 rounded-xl px-4 py-3 shadow-[0_0_10px_rgba(0,255,178,0.03)]">
 
                   <p className="text-sm text-gray-400">Current Balance</p>
-                  <p className="text-xl font-bold text-neon-green">${user?.balance.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-neon-green">${(user?.balance || 0).toFixed(2)}</p>
                 </div>
                 
                <div className="bg-gradient-to-br from-white/5 to-dark-gray/10 backdrop-blur-lg border border-white/10 rounded-xl px-4 py-3 shadow-[0_0_10px_rgba(0,255,178,0.03)]">

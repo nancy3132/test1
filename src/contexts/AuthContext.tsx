@@ -20,39 +20,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [userWallet, setUserWallet] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    initializeUser();
+    // Быстрая инициализация без ожидания
+    const initUser = async () => {
+      try {
+        await createDemoUser();
+      } catch (error) {
+        console.error('Error initializing user:', error);
+        // Создаем пользователя с дефолтными значениями
+        setUser({
+          id: 'demo-user-id',
+          username: 'Web3 User',
+          avatar: null,
+          balance: 0,
+          tasks_completed: 0,
+          total_earned: 0,
+          level: 1,
+          referral_code: 'xyz123',
+          joined_at: new Date().toISOString(),
+          congratulated: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        setIsConnected(true);
+        setUserWallet('0x1234...5678');
+      }
+    };
+    
+    initUser();
   }, []);
-
-  const initializeUser = async () => {
-    try {
-      setLoading(true);
-      await createDemoUser();
-    } catch (error) {
-      console.error('Error initializing user:', error);
-      // Fallback user if database fails
-      setUser({
-        id: 'demo-user-id',
-        username: 'Web3 User',
-        avatar: null,
-        balance: 0,
-        tasks_completed: 0,
-        total_earned: 0,
-        level: 1,
-        referral_code: 'xyz123',
-        joined_at: new Date().toISOString(),
-        congratulated: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-      setIsConnected(true);
-      setUserWallet('0x1234...5678');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const createDemoUser = async () => {
     const userId = 'demo-user-id';
@@ -70,10 +68,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .insert([{
             id: userId,
             username: 'Web3 User',
+            avatar: null,
             balance: 0,
             tasks_completed: 0,
             total_earned: 0,
             level: 1,
+            referral_code: 'xyz123',
+            joined_at: new Date().toISOString(),
             congratulated: false
           }])
           .select()

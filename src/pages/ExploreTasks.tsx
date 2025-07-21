@@ -611,8 +611,15 @@ const ExploreTasks = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-dark-gray rounded-xl p-6 max-w-md w-full mx-4"
+            className="bg-dark-gray rounded-xl p-6 max-w-md w-full mx-4 relative"
           >
+            <button
+              onClick={() => setShowVerificationModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-lg hover:bg-light-gray/20 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
             <h3 className="text-xl font-bold mb-4">Submit Verification</h3>
             
             <div className="space-y-4">

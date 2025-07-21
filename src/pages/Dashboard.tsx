@@ -75,15 +75,15 @@ const Dashboard = () => {
 
   // Check for congratulations when all 3 tasks completed
   useEffect(() => {
-    if (dashboardTasks && dashboardTasks.length === 3) {
+    if (dashboardTasks && dashboardTasks.length === 3 && user) {
       const allCompleted = dashboardTasks.every(task => task.completed);
-      if (allCompleted && user && !user.congratulated) {
+      if (allCompleted && !user.congratulated) {
         updateUserBalance(10);
         setUserAsCongratulated();
         setShowCongratsModal(true);
       }
     }
-  }, [dashboardTasks, user?.congratulated, updateUserBalance, setUserAsCongratulated]);
+  }, [dashboardTasks, user, updateUserBalance, setUserAsCongratulated]);
 
   // FAKE VERIFICATION SYSTEM FOR DASHBOARD TASKS
   const handleTaskClick = async (taskType: 'telegram' | 'instagram' | 'survey') => {
@@ -146,11 +146,13 @@ const Dashboard = () => {
     } else {
       completeDashboardTask('survey', { surveyAnswers: newAnswers });
       setShowSurveyModal(false);
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 3000);
     }
   };
 
   const handleWithdrawClick = () => {
-    if (!user || user.balance < 30) {
+    if (!user || (user.balance || 0) < 30) {
       setShowMinBalanceModal(true);
       return;
     }
@@ -182,7 +184,7 @@ const Dashboard = () => {
         className={`w-full rounded-lg py-2 px-4 flex items-center justify-center font-medium transition-all duration-300 ${
           dashboardTask?.first_click_done
             ? `bg-gradient-to-r ${gradients[taskType]} bg-opacity-10 hover:bg-opacity-20 relative overflow-hidden group`
-            : `bg-${taskType}-500/10 hover:bg-${taskType}-500/20 text-${taskType}-400`
+            : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400'
         }`}
       >
         {dashboardTask?.first_click_done ? (
@@ -208,18 +210,6 @@ const Dashboard = () => {
   // Check if all tasks completed
   const hasAllTasksCompleted = dashboardTasks && dashboardTasks.length === 3 && 
     dashboardTasks.every(task => task.completed);
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Safe user data with fallbacks
   const safeUser = user || {
