@@ -16,11 +16,12 @@ const MyTasksPage: React.FC = () => {
         type: 'regular'
       };
     })
-    .filter(item =>
-      item.status === 'Approved' &&
-      item.task_id !== 'telegram' &&
-      item.task_id !== 'instagram'
-    );
+    .filter(item => {
+      // Show all submissions (not just approved) and exclude dashboard tasks
+      return item.task_id !== 'telegram' && 
+             item.task_id !== 'instagram' && 
+             item.task_id !== 'survey';
+    });
 
   const myDashboardTasks = dashboardTasks
     .filter(task => task.completed)

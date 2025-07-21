@@ -68,8 +68,9 @@ const ExploreTasks = () => {
   const availableTasks = tasks.filter(task => {
     if (!task || !task.id) return false;
     if (task.id === 'survey') return false; // Exclude survey from explore
-    const isApproved = approvedTaskIds.has(task.id);
-    return !isApproved && (selectedDifficulty === null || task.difficulty === selectedDifficulty);
+    const isCompleted = approvedTaskIds.has(task.id);
+    const matchesDifficulty = selectedDifficulty === null || task.difficulty === selectedDifficulty;
+    return !isCompleted && matchesDifficulty;
   });
 
   // FAKE VERIFICATION COUNTDOWN SYSTEM

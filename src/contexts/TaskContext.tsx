@@ -162,19 +162,35 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw new Error('Verification failed');
           }
 
+          // Create new submission immediately in local state
+          const newSubmission: SupabaseTaskSubmission = {
+            id: `temp-${Date.now()}`,
+            user_id: user.id,
+            task_id: taskId,
+            screenshot: data.screenshot || null,
+            text: data.text || null,
+            status: 'Approved',
+            submitted_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          // Update local state immediately
+          setUserSubmissions(prev => [newSubmission, ...prev]);
+
           // Update tasks completed count
           const newCompletedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
           const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
           await updateTasksCompleted(newCompletedCount + dashboardCompletedCount);
 
           // Add reward to balance
-          const task = tasks.find(t => t.id === taskId);
+          await updateTasksCompleted(newApprovedCount + dashboardCompletedCount);
           if (task) {
             await updateUserBalance(task.reward);
           }
-          // Save successful submission
+            const { data: savedSubmission, error } = await supabase
           const { data: newSubmission, error } = await supabase
-            .from('task_submissions')
+          const newApprovedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
             .insert([{
               user_id: user.id,
               task_id: taskId,
@@ -184,8 +200,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }])
             .select()
             .single();
-
-          if (error) throw error;
+            if (!error && savedSubmission) {
+              // Update the temporary submission with real data from database
+              setUserSubmissions(prev => 
+                prev.map(sub => 
+                  sub.id === newSubmission.id ? savedSubmission : sub
+                )
+              );
 
           setUserSubmissions(prev => [newSubmission, ...prev]);
 
