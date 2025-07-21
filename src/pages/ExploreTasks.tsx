@@ -28,7 +28,8 @@ import {
   Share2,
   Settings, 
   ShieldCheck,
-  Lock
+  Lock,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTasks } from '../contexts/TaskContext';
