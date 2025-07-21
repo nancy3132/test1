@@ -189,11 +189,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           setUserSubmissions(prev => [newSubmission, ...prev]);
 
-          // Update tasks completed count
-          const approvedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
-          const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
-          await updateTasksCompleted(approvedCount + dashboardCompletedCount);
-
           resolve();
         } catch (error) {
           console.error('Task verification failed:', error);
