@@ -28,9 +28,6 @@ export interface Task {
   reward: number;
   link?: string;
   instructions: string;
-  requirements?: {
-    easyTasksCompleted?: number;
-  };
   createdAt: string;
   imageUrl?: string;
   isHot?: boolean;
@@ -51,11 +48,4 @@ export interface TaskSubmission {
   submitted_at: string;
   created_at: string;
   updated_at: string;
-}
-
-// Form Types
-export interface PublishTaskForm {
-  email: string;
-  telegram: string;
-  description: string;
 }

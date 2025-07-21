@@ -2,11 +2,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ExternalLink, CheckCircle, Clock, XCircle, ArrowRight } from 'lucide-react';
 import { useTasks } from '../contexts/TaskContext';
-import { useAuth } from '../contexts/AuthContext';
 
 const MyTasksPage: React.FC = () => {
   const { tasks, userSubmissions, dashboardTasks, loading } = useTasks();
-  const { user } = useAuth();
 
   // Combine regular task submissions and dashboard tasks
   const myTaskSubmissions = userSubmissions
@@ -127,10 +125,9 @@ const MyTasksPage: React.FC = () => {
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">{item.task?.title || item.task_id}</h3>
-<p className="text-sm text-gray-400 line-clamp-1">
-  {item.task?.description || 'No description available'}
-</p>
-
+                        <p className="text-sm text-gray-400 line-clamp-1">
+                          {item.task?.description || 'No description available'}
+                        </p>
                       </div>
                     </div>
                   </div>

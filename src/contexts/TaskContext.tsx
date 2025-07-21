@@ -11,21 +11,9 @@ interface TaskContextType {
   getTaskById: (id: string) => Task | undefined;
   getUserTaskSubmission: (taskId: string) => SupabaseTaskSubmission | undefined;
   getDashboardTask: (taskType: 'telegram' | 'instagram' | 'survey') => DashboardTask | undefined;
-  submitTask: (
-    taskId: string,
-    data: { screenshot?: string; text?: string },
-    onFirstFail?: () => void
-  ) => Promise<void>;
-  updateDashboardTask: (
-    taskType: 'telegram' | 'instagram' | 'survey',
-    updates: Partial<DashboardTask>
-  ) => Promise<void>;
-  completeDashboardTask: (
-    taskType: 'telegram' | 'instagram' | 'survey',
-    data?: { username?: string; surveyAnswers?: any }
-  ) => Promise<void>;
-  isVerifying: boolean;
-  verificationCountdown: number;
+  submitTask: (taskId: string, data: { screenshot?: string; text?: string }) => Promise<void>;
+  updateDashboardTask: (taskType: 'telegram' | 'instagram' | 'survey', updates: Partial<DashboardTask>) => Promise<void>;
+  completeDashboardTask: (taskType: 'telegram' | 'instagram' | 'survey', data?: { username?: string; surveyAnswers?: any }) => Promise<void>;
   loading: boolean;
 }
 
@@ -34,13 +22,9 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks] = useState<Task[]>(mockTasks);
   const { user, updateTasksCompleted } = useAuth();
-
   const [userSubmissions, setUserSubmissions] = useState<SupabaseTaskSubmission[]>([]);
   const [dashboardTasks, setDashboardTasks] = useState<DashboardTask[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationCountdown, setVerificationCountdown] = useState(10);
 
   useEffect(() => {
     if (user) {
@@ -61,11 +45,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (submissionsError) {
-        console.error('Error loading submissions:', submissionsError);
-        setUserSubmissions([]);
-      } else {
-        setUserSubmissions(submissions || []);
+      if (!submissionsError && submissions) {
+        setUserSubmissions(submissions);
       }
 
       // Load dashboard tasks
@@ -74,57 +55,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('user_id', user.id);
 
-      if (dashTasksError) {
-        console.error('Error loading dashboard tasks:', dashTasksError);
-        setDashboardTasks([]);
-      } else {
-        setDashboardTasks(dashTasks || []);
+      if (!dashTasksError && dashTasks) {
+        setDashboardTasks(dashTasks);
       }
 
     } catch (error) {
       console.error('Error loading user data:', error);
-      setUserSubmissions([]);
-      setDashboardTasks([]);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-
-    const checkVerification = () => {
-      const failAtRaw = localStorage.getItem('verificationFailAt');
-      if (!failAtRaw) return;
-
-      const failAt = parseInt(failAtRaw);
-      const timeLeft = Math.max(0, Math.floor((failAt - Date.now()) / 1000));
-      if (timeLeft > 0) {
-        setIsVerifying(true);
-        setVerificationCountdown(timeLeft);
-
-        interval = setInterval(() => {
-          const newTimeLeft = Math.max(0, Math.floor((failAt - Date.now()) / 1000));
-          setVerificationCountdown(newTimeLeft);
-
-          if (newTimeLeft <= 0) {
-            clearInterval(interval!);
-            localStorage.removeItem('verificationFailAt');
-            setIsVerifying(false);
-            window.dispatchEvent(new Event('task-verification-failed'));
-          }
-        }, 500);
-      } else {
-        localStorage.removeItem('verificationFailAt');
-      }
-    };
-
-    checkVerification();
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
 
   const getTaskById = (id: string): Task | undefined => {
     return tasks.find((task) => task.id === id);
@@ -203,92 +143,53 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // FAKE VERIFICATION SYSTEM FOR EXPLORE TASKS
   const submitTask = async (
     taskId: string,
-    data: { screenshot?: string; text?: string },
-    onFirstFail?: () => void
+    data: { screenshot?: string; text?: string }
   ): Promise<void> => {
     if (!user) return;
 
     return new Promise((resolve) => {
-      const failAt = Date.now() + 10000;
-      localStorage.setItem('verificationFailAt', failAt.toString());
-      localStorage.setItem('verifyingTaskId', taskId);
-
-      setIsVerifying(true);
-      setVerificationCountdown(10);
-
-      const interval = setInterval(() => {
-        const timeLeft = Math.max(0, Math.floor((failAt - Date.now()) / 1000));
-        setVerificationCountdown(timeLeft);
-
-        if (timeLeft > 0) return;
-
-        clearInterval(interval);
-        setIsVerifying(false);
-        localStorage.removeItem('verificationFailAt');
-
-        const handleSuccess = async () => {
-          try {
-            const { data: newSubmission, error } = await supabase
-              .from('task_submissions')
-              .insert([{
-                user_id: user.id,
-                task_id: taskId,
-                screenshot: data.screenshot,
-                text: data.text,
-                status: 'Approved'
-              }])
-              .select()
-              .single();
-
-            if (error) throw error;
-
-            setUserSubmissions(prev => [newSubmission, ...prev]);
-
-            // Update tasks completed count
-            const approvedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
-            const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
-            await updateTasksCompleted(approvedCount + dashboardCompletedCount);
-
-            resolve();
-          } catch (error) {
-            console.error('Error submitting task:', error);
-            resolve();
+      // Simulate verification delay
+      setTimeout(async () => {
+        try {
+          // FAKE VERIFICATION LOGIC - некоторые попытки "проваливаются" для реализма
+          const shouldFail = Math.random() < 0.3; // 30% chance to fail first time
+          
+          if (shouldFail) {
+            // Don't save anything, just reject
+            throw new Error('Verification failed');
           }
-        };
 
-        if (['telegram', 'instagram'].includes(taskId)) {
-          const firstFailKey = 'dashboard_first_fail_done';
-          const alreadyFailed = localStorage.getItem(firstFailKey) === 'true';
-          if (!alreadyFailed) {
-            localStorage.setItem(firstFailKey, 'true');
-            if (onFirstFail) onFirstFail();
-            window.dispatchEvent(new Event('task-verification-failed'));
-            resolve();
-            return;
-          }
-          handleSuccess();
-          return;
-        }
+          // Save successful submission
+          const { data: newSubmission, error } = await supabase
+            .from('task_submissions')
+            .insert([{
+              user_id: user.id,
+              task_id: taskId,
+              screenshot: data.screenshot,
+              text: data.text,
+              status: 'Approved'
+            }])
+            .select()
+            .single();
 
-        if (taskId === 'survey') {
-          handleSuccess();
-          return;
-        }
+          if (error) throw error;
 
-        const globalAttemptRaw = localStorage.getItem('globalAttemptCount');
-        const globalAttempt = globalAttemptRaw ? parseInt(globalAttemptRaw) : 1;
+          setUserSubmissions(prev => [newSubmission, ...prev]);
 
-        if ([1, 4, 5].includes(globalAttempt)) {
-          if (onFirstFail) onFirstFail();
-          window.dispatchEvent(new Event('task-verification-failed'));
+          // Update tasks completed count
+          const approvedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
+          const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
+          await updateTasksCompleted(approvedCount + dashboardCompletedCount);
+
           resolve();
-          return;
+        } catch (error) {
+          console.error('Task verification failed:', error);
+          throw error;
         }
-
-        handleSuccess();
-      }, 1000);
+      }, 10000); // 10 second "verification" delay
     });
   };
 
@@ -304,8 +205,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         submitTask,
         updateDashboardTask,
         completeDashboardTask,
-        isVerifying,
-        verificationCountdown,
         loading,
       }}
     >

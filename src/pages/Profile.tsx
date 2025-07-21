@@ -249,14 +249,6 @@ const Profile = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   return (
     <div className="max-w-6xl mx-auto">
       <div className="relative mb-8">
@@ -356,7 +348,7 @@ const Profile = () => {
               </div>
               
               <p className="font-mono text-gray-400 text-sm mb-6">
-                {user?.joinedAt && ` • Joined ${formatDate(user.joinedAt)}`}
+                {user?.joined_at && ` • Joined ${new Date(user.joined_at).toLocaleDateString()}`}
               </p>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

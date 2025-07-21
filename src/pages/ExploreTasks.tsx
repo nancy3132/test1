@@ -2,11 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Sparkles, 
-  Zap, 
-  Trophy, 
   ExternalLink, 
-  Lock, 
   Download, 
   Flame, 
   ChevronDown, 
@@ -14,47 +10,36 @@ import {
   CheckCircle,
   X,
   Loader2,
-  Upload,
-  Link as LinkIcon,
-  Clock,
-  PartyPopper,
-  ArrowRight,
-  DollarSign,
-  Target,
-  Shield,
-  Users,
-  Rocket,
   Globe,
   ArrowUpRight,
   Star,
   TrendingUp,
   Coins,
+  Shield,
+  DollarSign,
+  Target,
+  Link as LinkIcon,
   Vote,
   Layers,
   Flag,
-  Award,
   Wallet,
   MessageSquare,
   LineChart,
   Share2,
-  Settings, ShieldCheck
+  Settings, 
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTasks } from '../contexts/TaskContext';
 
 const ExploreTasks = () => {
   const navigate = useNavigate();
-  const { updateUserBalance, updateTasksCompleted } = useAuth();
+  const { updateUserBalance } = useAuth();
   const { tasks, submitTask, userSubmissions, loading } = useTasks();
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [globalAttemptCount, setGlobalAttemptCount] = useState(() => {
-  const stored = localStorage.getItem('globalAttemptCount');
-  return stored ? parseInt(stored) : 0;
-});
-
-
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [taskLink, setTaskLink] = useState('');
@@ -72,54 +57,45 @@ const ExploreTasks = () => {
   document.body.removeChild(link);
 };
 
-const approvedTaskIds = new Set(
-  userSubmissions
-    .filter(s => s.status === 'Approved')
-    .map(s => s.task_id)
-);
+  // Filter available tasks
+  const approvedTaskIds = new Set(
+    userSubmissions
+      .filter(s => s.status === 'Approved')
+      .map(s => s.task_id)
+  );
 
-const availableTasks = tasks.filter(task => {
-  if (!task || !task.id) return false;
-  if (task.id === 'survey') return false; // 💥 исключаем только из explore
-  const isApproved = approvedTaskIds.has(task.id);
-  return !isApproved && (selectedDifficulty === null || task.difficulty === selectedDifficulty);
-});
-
-
-
-  useEffect(() => {
-  // Это перерендерит компонент, если userSubmissions обновились
-}, [userSubmissions]);
-
-
-  useEffect(() => {
-  const intervals: NodeJS.Timeout[] = [];
-
-  Object.entries(verifyingTasks).forEach(([taskId, countdown]) => {
-    if (countdown > 1) {
-      const interval = setInterval(() => {
-        setVerifyingTasks(prev => ({
-          ...prev,
-          [taskId]: prev[taskId] - 1
-        }));
-      }, 1000);
-      intervals.push(interval);
-    } else if (countdown <= 1) {
-  setVerifyingTasks(prev => {
-    const updated = { ...prev };
-    delete updated[taskId];
-    return updated;
+  const availableTasks = tasks.filter(task => {
+    if (!task || !task.id) return false;
+    if (task.id === 'survey') return false; // Exclude survey from explore
+    const isApproved = approvedTaskIds.has(task.id);
+    return !isApproved && (selectedDifficulty === null || task.difficulty === selectedDifficulty);
   });
 
-  handleVerificationComplete(taskId);
-}
+  // FAKE VERIFICATION COUNTDOWN SYSTEM
+  useEffect(() => {
+    const intervals: NodeJS.Timeout[] = [];
 
+    Object.entries(verifyingTasks).forEach(([taskId, countdown]) => {
+      if (countdown > 1) {
+        const interval = setInterval(() => {
+          setVerifyingTasks(prev => ({
+            ...prev,
+            [taskId]: prev[taskId] - 1
+          }));
+        }, 1000);
+        intervals.push(interval);
+      } else if (countdown <= 1) {
+        setVerifyingTasks(prev => {
+          const updated = { ...prev };
+          delete updated[taskId];
+          return updated;
+        });
+        handleVerificationComplete(taskId);
+      }
+    });
 
-  });
-
-  return () => intervals.forEach(clearInterval);
-}, [verifyingTasks]);
-
+    return () => intervals.forEach(clearInterval);
+  }, [verifyingTasks]);
 
   const handleVisitSite = (taskId: string, link: string) => {
     window.open(link, '_blank');
@@ -142,58 +118,44 @@ const availableTasks = tasks.filter(task => {
     }
   };
 
-  
-
   const isValidUrl = (url: string) => {
-  try {
-    new URL(url);
-    return true;
-  } catch (_) {
-    return false;
-  }
-};
-
-const handleSubmitVerification = () => {
-  if (!currentTaskId || (!screenshot && !isValidUrl(taskLink))) return;
-
-  setShowVerificationModal(false);
-  setVerifyingTasks(prev => ({
-    ...prev,
-    [currentTaskId]: 20
-  }));
-  setScreenshot(null);
-  setTaskLink('');
-};
-
-
-  const handleVerificationComplete = async (taskId: string) => {
-  const currentAttempt = globalAttemptCount + 1;
-  setGlobalAttemptCount(currentAttempt);
-  localStorage.setItem('globalAttemptCount', currentAttempt.toString());
-
-  // 1-я, 4-я, 5-я попытки — всегда провал
-  if ([1, 4, 5].includes(currentAttempt)) {
-    setShowFailureNotification(true);
-    setTimeout(() => setShowFailureNotification(false), 3000);
-    return;
-  }
-
-  try {
-    await submitTask(taskId, { screenshot: 'verified', text: 'verified' });
-    
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      await updateUserBalance(task.reward);
+    try {
+      new URL(url);
+      return true;
+    } catch (_) {
+      return false;
     }
+  };
 
-    setShowSuccessNotification(true);
-    setTimeout(() => setShowSuccessNotification(false), 3000);
-  } catch (error) {
-    setShowFailureNotification(true);
-    setTimeout(() => setShowFailureNotification(false), 3000);
-  }
-};
+  const handleSubmitVerification = () => {
+    if (!currentTaskId || (!screenshot && !isValidUrl(taskLink))) return;
 
+    setShowVerificationModal(false);
+    setVerifyingTasks(prev => ({
+      ...prev,
+      [currentTaskId]: 20
+    }));
+    setScreenshot(null);
+    setTaskLink('');
+  };
+
+  // FAKE VERIFICATION COMPLETE - with realistic failure rate
+  const handleVerificationComplete = async (taskId: string) => {
+    try {
+      await submitTask(taskId, { screenshot: 'verified', text: 'verified' });
+      
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        await updateUserBalance(task.reward);
+      }
+
+      setShowSuccessNotification(true);
+      setTimeout(() => setShowSuccessNotification(false), 3000);
+    } catch (error) {
+      setShowFailureNotification(true);
+      setTimeout(() => setShowFailureNotification(false), 3000);
+    }
+  };
 
   const toggleTaskDetails = (taskId: string) => {
     setExpandedTaskId(expandedTaskId === taskId ? null : taskId);
@@ -263,48 +225,40 @@ const handleSubmitVerification = () => {
   const renderTaskButton = (task: typeof tasks[0]) => {
     const isVerifying = task.id in verifyingTasks;
     const countdown = verifyingTasks[task.id];
-    const maxTime = 20; // или сколько у тебя стоит
-const progress = isVerifying ? ((maxTime - countdown) / maxTime) * 100 : 0;
-
+    const maxTime = 20;
+    const progress = isVerifying ? ((maxTime - countdown) / maxTime) * 100 : 0;
 
     if (isVerifying) {
-  return (
-    <div className="relative w-full">
-      <div className="relative h-12 w-full bg-gradient-to-r from-gray-800 to-gray-700 rounded-lg overflow-hidden">
-        {/* Прогресс бар (плавный) */}
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000"
-          style={{
-            width: `${progress}%`,
-          }}
-        />
-
-        {/* Текст и иконка поверх */}
-        <div className="relative z-10 flex items-center justify-center h-full">
-          <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
-          <span className="text-white font-medium">
-            Checking task... {countdown}s
-          </span>
+      return (
+        <div className="relative w-full">
+          <div className="relative h-12 w-full bg-gradient-to-r from-gray-800 to-gray-700 rounded-lg overflow-hidden">
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-1000"
+              style={{ width: `${progress}%` }}
+            />
+            <div className="relative z-10 flex items-center justify-center h-full">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
+              <span className="text-white font-medium">
+                Checking task... {countdown}s
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
+      );
+    }
 
     if (visitedTasks[task.id]) {
       return (
         <button
-  onClick={() => handleVerifyTask(task.id)}
-  className="w-full rounded-xl py-3 px-4 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white font-semibold shadow-lg hover:brightness-110 transition-all duration-300 flex items-center justify-center relative overflow-hidden group"
->
-  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-  <div className="relative flex items-center gap-2 z-10">
-    <Shield className="w-5 h-5 text-white animate-pulse" />
-    <span>Verify Task</span>
-  </div>
-</button>
-
+          onClick={() => handleVerifyTask(task.id)}
+          className="w-full rounded-xl py-3 px-4 bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white font-semibold shadow-lg hover:brightness-110 transition-all duration-300 flex items-center justify-center relative overflow-hidden group"
+        >
+          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div className="relative flex items-center gap-2 z-10">
+            <Shield className="w-5 h-5 text-white animate-pulse" />
+            <span>Verify Task</span>
+          </div>
+        </button>
       );
     }
 
@@ -709,10 +663,10 @@ const progress = isVerifying ? ((maxTime - countdown) / maxTime) * 100 : 0;
                   required
                 />
                 {taskLink && !isValidUrl(taskLink) && (
-  <p className="text-sm text-red-500 mt-1">
-    Please enter a valid URL (starts with http:// or https://)
-  </p>
-)}
+                  <p className="text-sm text-red-500 mt-1">
+                    Please enter a valid URL (starts with http:// or https://)
+                  </p>
+                )}
 
               </div>
 
@@ -724,7 +678,6 @@ const progress = isVerifying ? ((maxTime - countdown) / maxTime) * 100 : 0;
                   Cancel
                 </button>
                 <button
-                
                   onClick={handleSubmitVerification}
                   disabled={!screenshot && !isValidUrl(taskLink)}
                   className="flex-1 bg-neon-green text-background rounded-lg py-2 font-medium disabled:opacity-50 flex items-center justify-center"

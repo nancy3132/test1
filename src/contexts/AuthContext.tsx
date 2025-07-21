@@ -29,12 +29,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const initializeUser = async () => {
     try {
       setLoading(true);
-      
-      // Create anonymous user for demo
-      await createAnonymousUser();
+      await createDemoUser();
     } catch (error) {
       console.error('Error initializing user:', error);
-      // Create fallback user if Supabase fails
+      // Fallback user if database fails
       setUser({
         id: 'demo-user-id',
         username: 'Web3 User',
@@ -56,11 +54,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const createAnonymousUser = async () => {
+  const createDemoUser = async () => {
+    const userId = 'demo-user-id';
+    
     try {
-      // For demo purposes, create a user with a fixed ID
-      const userId = 'demo-user-id';
-      
       const { data: existingUser } = await supabase
         .from('users')
         .select('*')
@@ -91,44 +88,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsConnected(true);
       setUserWallet('0x1234...5678');
     } catch (error) {
-      console.error('Error creating anonymous user:', error);
-      // Fallback to local user
-      setUser({
-        id: 'demo-user-id',
-        username: 'Web3 User',
-        avatar: null,
-        balance: 0,
-        tasks_completed: 0,
-        total_earned: 0,
-        level: 1,
-        referral_code: 'xyz123',
-        joined_at: new Date().toISOString(),
-        congratulated: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-      setIsConnected(true);
-      setUserWallet('0x1234...5678');
-    }
-  };
-
-  const loadUserData = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      setUser(data);
-    } catch (error) {
-      console.error('Error loading user data:', error);
+      throw error;
     }
   };
 
   const connectWallet = async (walletType: string) => {
-    // Mock wallet connection
     setIsConnected(true);
     setUserWallet('0x1234...5678');
   };
@@ -158,8 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       setUser(data);
     } catch (error) {
-      console.error('Error updating user balance:', error);
-      // Update locally if Supabase fails
+      console.error('Error updating balance:', error);
+      // Update locally as fallback
       setUser(prev => prev ? {
         ...prev,
         balance: prev.balance + amount,
@@ -183,7 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data);
     } catch (error) {
       console.error('Error updating tasks completed:', error);
-      // Update locally if Supabase fails
       setUser(prev => prev ? { ...prev, tasks_completed: count } : null);
     }
   };
@@ -203,7 +166,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data);
     } catch (error) {
       console.error('Error updating profile:', error);
-      // Update locally if Supabase fails
       setUser(prev => prev ? { ...prev, ...profileData } : null);
     }
   };
@@ -223,7 +185,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data);
     } catch (error) {
       console.error('Error updating congratulated status:', error);
-      // Update locally if Supabase fails
       setUser(prev => prev ? { ...prev, congratulated: true } : null);
     }
   };
