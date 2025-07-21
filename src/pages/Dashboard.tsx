@@ -42,7 +42,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTasks } from '../contexts/TaskContext';
 
 const Dashboard = () => {
-  const { user, updateUserBalance, updateTasksCompleted, setUserAsCongratulated } = useAuth();
+  const { user, updateUserBalance, setUserAsCongratulated, loading: authLoading } = useAuth();
+  const { 
+    dashboardTasks, 
+    getDashboardTask, 
+    updateDashboardTask, 
+    completeDashboardTask,
+    loading: tasksLoading 
+  } = useTasks();
+
+  const loading = authLoading || tasksLoading;
+
   useEffect(() => {
   console.log("USER DATA:", user);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -58,88 +68,29 @@ useEffect(() => {
   const [showMinBalanceModal, setShowMinBalanceModal] = useState(false);
   const [showCongratsModal, setShowCongratsModal] = useState(false);
   const [showFirstAttemptFailModal, setShowFirstAttemptFailModal] = useState(false);
-
-
-  const { tasks, submitTask, isVerifying, verificationCountdown } = useTasks();
+  
   const { scrollYProgress } = useScroll();
   const [showSurveyModal, setShowSurveyModal] = useState(false);
-  const [currentTask, setCurrentTask] = useState<'telegram' | 'instagram' | 'survey' | null>(null);
+  const [currentTaskType, setCurrentTaskType] = useState<'telegram' | 'instagram' | 'survey' | null>(null);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [username, setUsername] = useState('');
-  const [completedFirstClick, setCompletedFirstClick] = useState({
-    telegram: false,
-    instagram: false,
-    survey: false
-  });
-  const [completedTasks, setCompletedTasks] = useState(() => {
-    
-  const saved = localStorage.getItem('completedTasks');
-  return saved ? JSON.parse(saved) : {
-    telegram: false,
-    instagram: false,
-    survey: false
-  };
-});
-
-
-const [hasGivenReward, setHasGivenReward] = useState(false);
-useEffect(() => {
-  const rewarded = localStorage.getItem('hasGivenReward');
-  if (rewarded === 'true') {
-    setHasGivenReward(true);
-  }
-}, []);
-
-
   const [currentSurveyStep, setCurrentSurveyStep] = useState(0);
   const [surveyAnswers, setSurveyAnswers] = useState<string[]>([]);
   const [showFailureNotification, setShowFailureNotification] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
 
- // 1. Считает выполненные и обновляет user
-useEffect(() => {
-  const completedCount = Object.values(completedTasks).filter(Boolean).length;
-
-const totalApprovedInExplore = JSON.parse(localStorage.getItem('userSubmissions') || '[]')
-  .filter((s: any, i: number, self: any[]) =>
-    s.status === 'Approved' &&
-    self.findIndex(x => x.taskId === s.taskId) === i
-  ).length;
-
-const allTaskIds = new Set([
-  ...Object.entries(completedTasks)
-    .filter(([_, done]) => done)
-    .map(([taskId]) => taskId),
-  ...JSON.parse(localStorage.getItem('userSubmissions') || '[]')
-    .filter((s: any) => s.status === 'Approved')
-    .map((s: any) => s.taskId)
-]);
-
-const total = allTaskIds.size;
-
-if (user?.tasksCompleted < total) {
-  updateTasksCompleted(total);
-}
-
-
-}, [completedTasks]);
-
-// 2. Проверяет, можно ли выдать награду
-useEffect(() => {
-  checkAndRewardIfEligible(completedTasks);
-}, [completedTasks]);
-
-
-
-
+  // Check if all dashboard tasks are completed for reward
   useEffect(() => {
-    localStorage.setItem('completedFirstClick', JSON.stringify(completedFirstClick));
-  }, [completedFirstClick]);
-
-  useEffect(() => {
-    localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
-  }, [completedTasks]);
+    if (dashboardTasks.length === 3) {
+      const allCompleted = dashboardTasks.every(task => task.completed);
+      if (allCompleted && !user?.congratulated) {
+        updateUserBalance(10);
+        setUserAsCongratulated();
+        setShowCongratsModal(true);
+      }
+    }
+  }, [dashboardTasks, user?.congratulated, updateUserBalance, setUserAsCongratulated]);
 
   const surveyQuestions = [
     {
@@ -167,82 +118,62 @@ useEffect(() => {
   const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
 
-  const handleTaskClick = (task: 'telegram' | 'instagram' | 'survey') => {
-  if (isVerifying) return;
+  const handleTaskClick = async (taskType: 'telegram' | 'instagram' | 'survey') => {
+    const dashboardTask = getDashboardTask(taskType);
 
   // СБРОС username перед открытием нового задания
   setUsername('');
 
-  if (task === 'survey') {
+    if (taskType === 'survey') {
     setCurrentSurveyStep(0);
     setSurveyAnswers([]);
     setShowSurveyModal(true);
     return;
   }
 
-  if (!completedFirstClick[task]) {
-    setCompletedFirstClick(prev => ({ ...prev, [task]: true }));
+    if (!dashboardTask?.first_click_done) {
+      await updateDashboardTask(taskType, { first_click_done: true });
     
-    if (task === 'telegram') {
+      if (taskType === 'telegram') {
       window.open('https://t.me/+atUr8L_y6nJhMWVi', '_blank');
-    } else if (task === 'instagram') {
+      } else if (taskType === 'instagram') {
       window.open('https://www.instagram.com/sonavo.web3?igsh=MzhpOTdrOHZ1YmRp/', '_blank');
     }
   } else {
-    setCurrentTask(task);
+      setCurrentTaskType(taskType);
     setShowUsernameModal(true);
   }
 };
 
- const checkAndRewardIfEligible = (newTasks: typeof completedTasks) => {
-  if (
-  Object.values(newTasks).every(task => task) &&
-  !user?.congratulated &&
-  localStorage.getItem('hasGivenReward') !== 'true'
-) {
-
-    updateUserBalance(10);
-    setUserAsCongratulated();
-    setHasGivenReward(true);
-    localStorage.setItem('hasGivenReward', 'true');
-
-    setShowCongratsModal(true);
-  }
-};
-
-
-
-
- const handleUsernameSubmit = async () => {
-  if (!currentTask || !username.trim()) return;
+  const handleUsernameSubmit = async () => {
+    if (!currentTaskType || !username.trim()) return;
 
   setShowUsernameModal(false);
 
   try {
-    const wasSuccessful = await submitTask(currentTask, { text: username }, () => {
+      // Simulate verification process
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For demo, sometimes fail on first attempt
+      const shouldFail = Math.random() < 0.3;
+      
+      if (shouldFail) {
       setShowFirstAttemptFailModal(true);
-    });
+        return;
+      }
 
-    if (!wasSuccessful) return; // ❗ Если провал — не засчитываем задачу
-
-    setCompletedTasks(prev => ({
-      ...prev,
-      [currentTask]: true
-    }));
+      await completeDashboardTask(currentTaskType, { username });
 
     setShowSuccessNotification(true);
     setTimeout(() => setShowSuccessNotification(false), 3000);
   } catch (error) {
     setShowFailureNotification(true);
     setTimeout(() => setShowFailureNotification(false), 3000);
-    setCompletedFirstClick(prev => ({ ...prev, [currentTask]: false }));
   }
 
   setUsername('');
-  setCurrentTask(null);
+    setCurrentTaskType(null);
 };
-
-
 
   const handleSurveyAnswer = (answer: string) => {
     const newAnswers = [...surveyAnswers, answer];
@@ -251,23 +182,13 @@ useEffect(() => {
     if (currentSurveyStep < surveyQuestions.length - 1) {
       setCurrentSurveyStep(prev => prev + 1);
     } else {
-      setCompletedTasks(prev => {
-  const newTasks = {
-    ...prev,
-    survey: true
-  };
-
-
-
-  return newTasks;
-});
-
+      completeDashboardTask('survey', { surveyAnswers: newAnswers });
       setShowSurveyModal(false);
     }
   };
 
   const handleWithdrawClick = () => {
-  if (user?.balance < 30) {
+    if (!user || user.balance < 30) {
     setShowMinBalanceModal(true);
     return;
   }
@@ -276,22 +197,14 @@ useEffect(() => {
   setShowWithdrawModal(true);
 };
 
+  const renderTaskButton = (taskType: 'telegram' | 'instagram' | 'survey') => {
+    const dashboardTask = getDashboardTask(taskType);
 
-  const renderTaskButton = (task: 'telegram' | 'instagram' | 'survey') => {
-    if (completedTasks[task]) {
+    if (dashboardTask?.completed) {
       return (
         <div className="w-full rounded-lg py-2 px-4 bg-green-500/10 text-green-400 flex items-center justify-center">
           <CheckCircle className="w-4 h-4 mr-2" />
           <span className="font-medium">Completed</span>
-        </div>
-      );
-    }
-
-    if (isVerifying && currentTask === task) {
-      return (
-        <div className="w-full rounded-lg py-2 px-4 bg-blue-500/10 text-blue-400 flex items-center justify-center">
-          <Clock className="w-4 h-4 mr-2 animate-spin" />
-          <span className="font-medium">Verifying... {verificationCountdown}s</span>
         </div>
       );
     }
@@ -310,27 +223,26 @@ useEffect(() => {
 
     return (
       <button
-        onClick={() => handleTaskClick(task)}
-        disabled={isVerifying}
+        onClick={() => handleTaskClick(taskType)}
         className={`w-full rounded-lg py-2 px-4 flex items-center justify-center font-medium transition-all duration-300 ${
-          completedFirstClick[task]
+          dashboardTask?.first_click_done
             ? `bg-gradient-to-r ${gradients[task]} bg-opacity-10 hover:bg-opacity-20 relative overflow-hidden group`
-            : `bg-${task}-500/10 hover:bg-${task}-500/20 ${baseColors[task]}`
-        } ${isVerifying ? 'opacity-50 cursor-not-allowed' : ''}`}
+            : `bg-${taskType}-500/10 hover:bg-${taskType}-500/20 ${baseColors[taskType]}`
+        }`}
       >
-        {completedFirstClick[task] ? (
+        {dashboardTask?.first_click_done ? (
           <>
             <span className="relative z-10 flex items-center">
               Verify Completion 
               <CheckCircle className="w-4 h-4 ml-2" />
             </span>
-            <div className={`absolute inset-0 bg-gradient-to-r ${gradients[task]} opacity-10 group-hover:opacity-20 transition-opacity duration-300`}></div>
+            <div className={`absolute inset-0 bg-gradient-to-r ${gradients[taskType]} opacity-10 group-hover:opacity-20 transition-opacity duration-300`}></div>
           </>
         ) : (
           <>
-            {task === 'telegram' && 'Join Telegram'}
-            {task === 'instagram' && 'Go to Instagram'}
-            {task === 'survey' && 'Start Survey'}
+            {taskType === 'telegram' && 'Join Telegram'}
+            {taskType === 'instagram' && 'Go to Instagram'}
+            {taskType === 'survey' && 'Start Survey'}
             <ExternalLink className="w-4 h-4 ml-2" />
           </>
         )}
@@ -338,8 +250,19 @@ useEffect(() => {
     );
   };
 
- const hasAllTasksCompleted = Object.values(completedTasks).every(Boolean);
+  const hasAllTasksCompleted = dashboardTasks.length === 3 && 
+    dashboardTasks.every(task => task.completed);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -736,12 +659,13 @@ useEffect(() => {
             <h3 className="text-xl font-bold mb-4">
               Enter your {currentTask === 'telegram' ? 'Telegram' : 'Instagram'} username
             </h3>
+            <h3 className="text-xl font-bold mb-4">Enter your {currentTaskType === 'telegram' ? 'Telegram' : 'Instagram'} username</h3>
             
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder={`@${currentTask === 'telegram' ? 'telegram' : 'instagram'}_username`}
+              placeholder={`@${currentTaskType === 'telegram' ? 'telegram' : 'instagram'}_username`}
               className="input w-full mb-4"
             />
 

@@ -2,31 +2,53 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ExternalLink, CheckCircle, Clock, XCircle, ArrowRight } from 'lucide-react';
 import { useTasks } from '../contexts/TaskContext';
-import { TaskStatus } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 const MyTasksPage: React.FC = () => {
-  const { tasks, userSubmissions } = useTasks();
+  const { tasks, userSubmissions, dashboardTasks, loading } = useTasks();
+  const { user } = useAuth();
 
-  const myTasks = userSubmissions
+  // Combine regular task submissions and dashboard tasks
+  const myTaskSubmissions = userSubmissions
     .map(submission => {
-      const task = tasks.find(t => t.id === submission.taskId);
+      const task = tasks.find(t => t.id === submission.task_id);
       return {
         ...submission,
         task,
+        type: 'regular'
       };
     })
     .filter(item =>
       item.status === 'Approved' &&
-      item.taskId !== 'telegram' &&
-      item.taskId !== 'instagram'
+      item.task_id !== 'telegram' &&
+      item.task_id !== 'instagram'
     );
 
+  const myDashboardTasks = dashboardTasks
+    .filter(task => task.completed)
+    .map(task => ({
+      id: task.id,
+      task_id: task.task_type,
+      status: 'Approved' as const,
+      submitted_at: task.completed_at || task.created_at,
+      task: {
+        id: task.task_type,
+        title: task.task_type === 'telegram' ? 'Join Telegram' : 
+               task.task_type === 'instagram' ? 'Follow on Instagram' : 
+               'Answer Survey',
+        description: task.task_type === 'telegram' ? 'Join our Telegram community' : 
+                    task.task_type === 'instagram' ? 'Follow us on Instagram' : 
+                    'Complete the survey questions',
+        reward: 0
+      },
+      type: 'dashboard'
+    }));
 
+  const allMyTasks = [...myTaskSubmissions, ...myDashboardTasks]
+    .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
 
-
-  
   // Helper function to render status icon and color
-  const getStatusInfo = (status: TaskStatus) => {
+  const getStatusInfo = (status: string) => {
     switch (status) {
       case 'Approved':
         return {
@@ -55,6 +77,17 @@ const MyTasksPage: React.FC = () => {
     }
   };
   
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading your tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -67,19 +100,19 @@ const MyTasksPage: React.FC = () => {
         </motion.h1>
       </div>
       
-      {myTasks.length > 0 ? (
+      {allMyTasks.length > 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="space-y-4"
         >
-          {myTasks.map((item) => {
+          {allMyTasks.map((item) => {
             const statusInfo = getStatusInfo(item.status);
             
             return (
               <motion.div
-                key={item.taskId}
+                key={`${item.type}-${item.task_id || item.id}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="card bg-gradient-to-br from-dark-gray to-background hover:border-light-gray/50 transition-all duration-300"
@@ -93,7 +126,7 @@ const MyTasksPage: React.FC = () => {
                         {statusInfo.icon}
                       </div>
                       <div>
-                        <h3 className="font-medium mb-1">{item.task?.title || item.taskId}</h3>
+                        <h3 className="font-medium mb-1">{item.task?.title || item.task_id}</h3>
 <p className="text-sm text-gray-400 line-clamp-1">
   {item.task?.description || 'No description available'}
 </p>
@@ -122,18 +155,20 @@ const MyTasksPage: React.FC = () => {
                       <div>
                         <p className="text-sm text-gray-400 mb-1">Submitted</p>
                         <span className="text-gray-300">
-                          {new Date(item.submittedAt).toLocaleDateString()}
+                          {new Date(item.submitted_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
 
-                    <Link 
-                      to={`/tasks/${item.taskId}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-light-gray hover:bg-opacity-80 transition-colors text-sm font-medium"
-                    >
-                      View Details
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
+                    {item.type === 'regular' && (
+                      <Link 
+                        to={`/tasks/${item.task_id}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-light-gray hover:bg-opacity-80 transition-colors text-sm font-medium"
+                      >
+                        View Details
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </motion.div>

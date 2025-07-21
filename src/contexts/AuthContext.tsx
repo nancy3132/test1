@@ -1,94 +1,206 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, User as SupabaseUser } from '../lib/supabase';
 
-import { mockUser } from '../data/initialData';
-
-
-
-
-
+interface AuthContextType {
+  user: SupabaseUser | null;
+  isConnected: boolean;
+  userWallet: string | null;
+  loading: boolean;
+  connectWallet: (walletType: string) => Promise<void>;
+  disconnectWallet: () => void;
+  updateUserBalance: (amount: number) => Promise<void>;
+  updateTasksCompleted: (count: number) => Promise<void>;
+  updateProfile: (data: { username?: string; avatar?: string }) => Promise<void>;
+  setUserAsCongratulated: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [userWallet, setUserWallet] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  const storedBalance = parseFloat(localStorage.getItem('user_balance') || '0');
-  const storedTasks = parseInt(localStorage.getItem('tasks_completed') || '0');
-  const storedUsername = localStorage.getItem('username') || 'Web3 User';
-  const storedAvatar = localStorage.getItem('avatar');
-  const joinedAt = localStorage.getItem('joined_at') || new Date().toISOString();
-  const congratulated = localStorage.getItem('congratulated') === 'true';
+    initializeUser();
+  }, []);
 
-  const newUser = {
-    ...mockUser,
-    username: storedUsername,
-    avatar: storedAvatar,
-    balance: storedBalance,
-    totalEarned: storedBalance,
-    tasksCompleted: storedTasks,
-    joinedAt,
-    congratulated
+  const initializeUser = async () => {
+    try {
+      setLoading(true);
+      
+      // Check if user exists in Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        await loadUserData(session.user.id);
+        setIsConnected(true);
+        setUserWallet('0x1234...5678'); // Mock wallet for now
+      } else {
+        // Create anonymous user for demo
+        await createAnonymousUser();
+      }
+    } catch (error) {
+      console.error('Error initializing user:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  setUser(newUser);
-  localStorage.setItem('mock_user_initialized', 'true');
-}, []);
+  const createAnonymousUser = async () => {
+    try {
+      // For demo purposes, create a user with a fixed ID
+      const userId = 'demo-user-id';
+      
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
+      if (!existingUser) {
+        const { data: newUser, error } = await supabase
+          .from('users')
+          .insert([{
+            id: userId,
+            username: 'Web3 User',
+            balance: 0,
+            tasks_completed: 0,
+            total_earned: 0,
+            level: 1,
+            congratulated: false
+          }])
+          .select()
+          .single();
 
- 
-
-  const updateUserBalance = (amount: number) => {
-  setUser(prev => {
-    if (!prev) return null;
-    const newUser = {
-      ...prev,
-      balance: prev.balance + amount,
-      totalEarned: prev.totalEarned + amount
-    };
-    localStorage.setItem('user_balance', newUser.balance.toString());
-    return newUser;
-  });
-};
-
-
-  const updateTasksCompleted = (count: number) => {
-    setUser(prev => {
-      if (!prev) return null;
-      const newUser = {
-        ...prev,
-        tasksCompleted: count
-      };
-      localStorage.setItem('tasks_completed', count.toString());
-      return newUser;
-    });
+        if (error) throw error;
+        setUser(newUser);
+      } else {
+        setUser(existingUser);
+      }
+      
+      setIsConnected(true);
+      setUserWallet('0x1234...5678');
+    } catch (error) {
+      console.error('Error creating anonymous user:', error);
+    }
   };
 
-  const updateProfile = (data: { username?: string; avatar?: string }) => {
-    setUser(prev => {
-      if (!prev) return null;
-      const newUser = {
-        ...prev,
-        ...data
-      };
-      if (data.username) localStorage.setItem('username', data.username);
-      if (data.avatar) localStorage.setItem('avatar', data.avatar);
-      return newUser;
-    });
+  const loadUserData = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
-  const setUserAsCongratulated = () => {
-  setUser(prev => {
-    if (!prev) return null;
-    return { ...prev, congratulated: true };
-  });
-};
+
+  const connectWallet = async (walletType: string) => {
+    // Mock wallet connection
+    setIsConnected(true);
+    setUserWallet('0x1234...5678');
+  };
+
+  const disconnectWallet = () => {
+    setIsConnected(false);
+    setUserWallet(null);
+  };
+
+  const updateUserBalance = async (amount: number) => {
+    if (!user) return;
+
+    try {
+      const newBalance = user.balance + amount;
+      const newTotalEarned = user.total_earned + amount;
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          balance: newBalance,
+          total_earned: newTotalEarned
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error updating user balance:', error);
+    }
+  };
+
+  const updateTasksCompleted = async (count: number) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ tasks_completed: count })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error updating tasks completed:', error);
+    }
+  };
+
+  const updateProfile = async (profileData: { username?: string; avatar?: string }) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update(profileData)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+    }
+  };
+
+  const setUserAsCongratulated = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({ congratulated: true })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setUser(data);
+    } catch (error) {
+      console.error('Error updating congratulated status:', error);
+    }
+  };
 
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        isConnected,
+        userWallet,
+        loading,
+        connectWallet,
+        disconnectWallet,
         updateUserBalance,
         updateTasksCompleted,
         updateProfile,

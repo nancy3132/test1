@@ -45,7 +45,7 @@ import { useTasks } from '../contexts/TaskContext';
 const ExploreTasks = () => {
   const navigate = useNavigate();
   const { updateUserBalance, updateTasksCompleted } = useAuth();
-  const { tasks, submitTask, userSubmissions } = useTasks();
+  const { tasks, submitTask, userSubmissions, loading } = useTasks();
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard' | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -60,10 +60,7 @@ const ExploreTasks = () => {
   const [taskLink, setTaskLink] = useState('');
   const [showFailureNotification, setShowFailureNotification] = useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [visitedTasks, setVisitedTasks] = useState<Record<string, boolean>>(() => {
-    const stored = localStorage.getItem('visitedTasks');
-    return stored ? JSON.parse(stored) : {};
-  });
+  const [visitedTasks, setVisitedTasks] = useState<Record<string, boolean>>({});
   const [verifyingTasks, setVerifyingTasks] = useState<Record<string, number>>({});
 
  const handleDownloadImage = () => {
@@ -75,14 +72,10 @@ const ExploreTasks = () => {
   document.body.removeChild(link);
 };
 
-  const storedSubmissionsRaw = localStorage.getItem('userSubmissions');
-const storedSubmissions = storedSubmissionsRaw ? JSON.parse(storedSubmissionsRaw) : [];
-
 const approvedTaskIds = new Set(
-  storedSubmissions
-    .filter((s: any) => s.status === 'Approved')
-   .map((s: any) => String(s.taskId))
-
+  userSubmissions
+    .filter(s => s.status === 'Approved')
+    .map(s => s.task_id)
 );
 
 const availableTasks = tasks.filter(task => {
@@ -93,11 +86,6 @@ const availableTasks = tasks.filter(task => {
 });
 
 
-
-
-  useEffect(() => {
-    localStorage.setItem('visitedTasks', JSON.stringify(visitedTasks));
-  }, [visitedTasks]);
 
   useEffect(() => {
   // Это перерендерит компонент, если userSubmissions обновились
@@ -190,35 +178,20 @@ const handleSubmitVerification = () => {
     return;
   }
 
-  const wasSuccessful = await submitTask(taskId, {
-  screenshot: 'verified',
-  text: 'verified',
-});
+  try {
+    await submitTask(taskId, { screenshot: 'verified', text: 'verified' });
+    
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      await updateUserBalance(task.reward);
+    }
 
-const stored = localStorage.getItem('userSubmissions');
-const parsed = stored ? JSON.parse(stored) : [];
-const matched = parsed.find((s: any) => s.taskId === taskId && s.status === 'Approved');
-
-if (wasSuccessful && matched) {
-  const task = tasks.find(t => t.id === taskId);
-  if (task) {
-    updateUserBalance(task.reward);
+    setShowSuccessNotification(true);
+    setTimeout(() => setShowSuccessNotification(false), 3000);
+  } catch (error) {
+    setShowFailureNotification(true);
+    setTimeout(() => setShowFailureNotification(false), 3000);
   }
-
-  const approvedCount = parsed.filter(
-    (s: any, index: number, self: any[]) =>
-      s.status === 'Approved' &&
-      self.findIndex((x) => x.taskId === s.taskId) === index
-  ).length;
-
-  updateTasksCompleted(approvedCount);
-
-  setShowSuccessNotification(true);
-  setTimeout(() => setShowSuccessNotification(false), 3000);
-} else {
-  setShowFailureNotification(true);
-  setTimeout(() => setShowFailureNotification(false), 3000);
-}
 };
 
 
@@ -563,6 +536,17 @@ const progress = isVerifying ? ((maxTime - countdown) / maxTime) * 100 : 0;
       </motion.div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto">

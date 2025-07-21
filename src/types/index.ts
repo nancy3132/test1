@@ -2,15 +2,18 @@
 export type Wallet = 'MetaMask' | 'TrustWallet' | 'WalletConnect';
 
 export interface User {
-  address: string;
+  id: string;
   username: string;
   avatar: string | null;
   balance: number;
-  tasksCompleted: number;
-  totalEarned: number;
+  tasks_completed: number;
+  total_earned: number;
   level: number;
-  referralCode: string;
-  joinedAt: string;
+  referral_code: string;
+  joined_at: string;
+  congratulated: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Task Types
@@ -39,12 +42,15 @@ export interface Task {
 }
 
 export interface TaskSubmission {
-  taskId: string;
-  userId: string;
+  id: string;
+  user_id: string;
+  task_id: string;
   screenshot?: string;
   text?: string;
   status: TaskStatus;
-  submittedAt: string;
+  submitted_at: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Form Types
