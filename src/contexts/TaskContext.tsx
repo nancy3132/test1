@@ -189,8 +189,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             await updateUserBalance(task.reward);
           }
             const { data: savedSubmission, error } = await supabase
-          const { data: newSubmission, error } = await supabase
-          const newApprovedCount = userSubmissions.filter(s => s.status === 'Approved').length + 1;
             .insert([{
               user_id: user.id,
               task_id: taskId,
@@ -209,7 +207,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
               );
             }
 
-          setUserSubmissions(prev => [newSubmission, ...prev]);
 
           resolve();
         } catch (error) {
