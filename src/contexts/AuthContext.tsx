@@ -30,17 +30,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       
-      // Check if user exists in Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        await loadUserData(session.user.id);
-        setIsConnected(true);
-        setUserWallet('0x1234...5678'); // Mock wallet for now
-      } else {
-        // Create anonymous user for demo
-        await createAnonymousUser();
-      }
+      // Create anonymous user for demo
+      await createAnonymousUser();
     } catch (error) {
       console.error('Error initializing user:', error);
       // Create fallback user if Supabase fails
