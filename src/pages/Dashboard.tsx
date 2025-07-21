@@ -51,7 +51,7 @@ const Dashboard = () => {
     loading: tasksLoading 
   } = useTasks();
 
-  const loading = authLoading || tasksLoading;
+  const loading = authLoading;
 
   useEffect(() => {
   console.log("USER DATA:", user);
@@ -348,7 +348,7 @@ useEffect(() => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Tasks Completed</p>
-                <p className="text-2xl font-bold">{user?.tasksCompleted ?? 0}</p>
+                <p className="text-2xl font-bold">{user?.tasks_completed ?? 0}</p>
 
               </div>
             </div>
@@ -376,7 +376,7 @@ useEffect(() => {
               </div>
               <div>
                 <p className="text-sm text-gray-400">Total Earned</p>
-                <p className="text-2xl font-bold">${user?.totalEarned?.toFixed(2) ?? "0.00"}</p>
+                <p className="text-2xl font-bold">${user?.total_earned?.toFixed(2) ?? "0.00"}</p>
 
               </div>
             </div>

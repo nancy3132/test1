@@ -37,7 +37,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [userSubmissions, setUserSubmissions] = useState<SupabaseTaskSubmission[]>([]);
   const [dashboardTasks, setDashboardTasks] = useState<DashboardTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationCountdown, setVerificationCountdown] = useState(10);
@@ -61,8 +61,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (submissionsError) throw submissionsError;
-      setUserSubmissions(submissions || []);
+      if (submissionsError) {
+        console.error('Error loading submissions:', submissionsError);
+        setUserSubmissions([]);
+      } else {
+        setUserSubmissions(submissions || []);
+      }
 
       // Load dashboard tasks
       const { data: dashTasks, error: dashTasksError } = await supabase
@@ -70,11 +74,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('user_id', user.id);
 
-      if (dashTasksError) throw dashTasksError;
-      setDashboardTasks(dashTasks || []);
+      if (dashTasksError) {
+        console.error('Error loading dashboard tasks:', dashTasksError);
+        setDashboardTasks([]);
+      } else {
+        setDashboardTasks(dashTasks || []);
+      }
 
     } catch (error) {
       console.error('Error loading user data:', error);
+      setUserSubmissions([]);
+      setDashboardTasks([]);
     } finally {
       setLoading(false);
     }
@@ -193,12 +203,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const submitTask = (
+  const submitTask = async (
     taskId: string,
     data: { screenshot?: string; text?: string },
     onFirstFail?: () => void
-  ): Promise<boolean> => {
-    if (!user) return Promise.resolve(false);
+  ): Promise<void> => {
+    if (!user) return;
 
     return new Promise((resolve) => {
       const failAt = Date.now() + 10000;
@@ -241,10 +251,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const dashboardCompletedCount = dashboardTasks.filter(t => t.completed).length;
             await updateTasksCompleted(approvedCount + dashboardCompletedCount);
 
-            resolve(true);
+            resolve();
           } catch (error) {
             console.error('Error submitting task:', error);
-            resolve(false);
+            resolve();
           }
         };
 
@@ -255,7 +265,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem(firstFailKey, 'true');
             if (onFirstFail) onFirstFail();
             window.dispatchEvent(new Event('task-verification-failed'));
-            resolve(false);
+            resolve();
             return;
           }
           handleSuccess();
@@ -273,7 +283,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if ([1, 4, 5].includes(globalAttempt)) {
           if (onFirstFail) onFirstFail();
           window.dispatchEvent(new Event('task-verification-failed'));
-          resolve(false);
+          resolve();
           return;
         }
 
