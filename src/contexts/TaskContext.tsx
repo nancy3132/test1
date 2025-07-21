@@ -278,70 +278,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         handleSuccess();
-      });
-    });
-  };
-
-            screenshot: data.screenshot,
-            text: data.text,
-            status: 'Approved',
-            submittedAt: new Date().toISOString(),
-          };
-
-          setUserSubmissions((prev) => {
-            const exists = prev.some((sub) => sub.taskId === taskId);
-            const newSubmissions = exists
-              ? prev.map((sub) => sub.taskId === taskId ? newSubmission : sub)
-              : [...prev, newSubmission].slice(-MAX_STORED_SUBMISSIONS);
-
-            setTimeout(() => {
-              if (!['telegram', 'instagram'].includes(taskId)) {
-                updateTasksCompleted(
-                  newSubmissions.filter((s, index, self) => s.status === 'Approved' && self.findIndex(x => x.taskId === s.taskId) === index).length
-                );
-              }
-              resolve(true);
-            }, 500);
-
-            return newSubmissions;
-          });
-        };
-
-        if (['telegram', 'instagram'].includes(taskId)) {
-          const firstFailKey = 'dashboard_first_fail_done';
-          const alreadyFailed = localStorage.getItem(firstFailKey) === 'true';
-          if (!alreadyFailed) {
-            localStorage.setItem(firstFailKey, 'true');
-            if (onFirstFail) onFirstFail();
-            window.dispatchEvent(new Event('task-verification-failed'));
-            resolve(false);
-            return;
-          }
-          handleSuccess();
-          return;
-        }
-
-        if (taskId === 'survey') {
-          handleSuccess();
-          return;
-        }
-
-        const globalAttemptRaw = localStorage.getItem('globalAttemptCount');
-        const globalAttempt = globalAttemptRaw ? parseInt(globalAttemptRaw) : 1;
-
-        if ([1, 4, 5].includes(globalAttempt)) {
-          const updated = failAttemptCount + 1;
-          setFailAttemptCount(updated);
-          localStorage.setItem('failAttemptCount', updated.toString());
-
-          if (onFirstFail) onFirstFail();
-          window.dispatchEvent(new Event('task-verification-failed'));
-          resolve(false);
-          return;
-        }
-
-        handleSuccess();
-      });
+      }, 1000);
     });
   };
 
