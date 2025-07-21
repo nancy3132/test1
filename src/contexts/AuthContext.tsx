@@ -55,6 +55,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const createDemoUser = async () => {
     const userId = 'demo-user-id';
     
+    // If no Supabase connection, work with local state only
+    if (!supabase) {
+      const demoUser = {
+        id: userId,
+        username: 'Web3 User',
+        avatar: null,
+        balance: 0,
+        tasks_completed: 0,
+        total_earned: 0,
+        level: 1,
+        referral_code: 'xyz123',
+        joined_at: new Date().toISOString(),
+        congratulated: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      setUser(demoUser);
+      setIsConnected(true);
+      setUserWallet('0x1234...5678');
+      return;
+    }
+
     try {
       const { data: existingUser } = await supabase
         .from('users')
@@ -106,10 +128,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUserBalance = async (amount: number) => {
     if (!user) return;
 
-    try {
-      const newBalance = user.balance + amount;
-      const newTotalEarned = user.total_earned + amount;
+    // Update local state first
+    const newBalance = user.balance + amount;
+    const newTotalEarned = user.total_earned + amount;
+    setUser(prev => prev ? {
+      ...prev,
+      balance: newBalance,
+      total_earned: newTotalEarned
+    } : null);
 
+    // Try to update in Supabase if available
+    if (!supabase) return;
+
+    try {
       const { data, error } = await supabase
         .from('users')
         .update({
@@ -121,20 +152,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) throw error;
-      setUser(data);
     } catch (error) {
       console.error('Error updating balance:', error);
-      // Update locally as fallback
-      setUser(prev => prev ? {
-        ...prev,
-        balance: prev.balance + amount,
-        total_earned: prev.total_earned + amount
-      } : null);
     }
   };
 
   const updateTasksCompleted = async (count: number) => {
     if (!user) return;
+
+    // Update local state first
+    setUser(prev => prev ? { ...prev, tasks_completed: count } : null);
+
+    // Try to update in Supabase if available
+    if (!supabase) return;
 
     try {
       const { data, error } = await supabase
@@ -145,10 +175,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) throw error;
-      setUser(data);
     } catch (error) {
       console.error('Error updating tasks completed:', error);
-      setUser(prev => prev ? { ...prev, tasks_completed: count } : null);
     }
   };
 

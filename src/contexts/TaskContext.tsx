@@ -33,7 +33,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const loadUserData = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     try {
       setLoading(true);
@@ -82,7 +82,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     taskType: 'telegram' | 'instagram' | 'survey',
     updates: Partial<DashboardTask>
   ) => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     try {
       const existingTask = getDashboardTask(taskType);
@@ -148,7 +148,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     taskId: string,
     data: { screenshot?: string; text?: string }
   ): Promise<void> => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     return new Promise((resolve) => {
       // Simulate verification delay
