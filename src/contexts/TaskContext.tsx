@@ -207,6 +207,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   sub.id === newSubmission.id ? savedSubmission : sub
                 )
               );
+            }
 
           setUserSubmissions(prev => [newSubmission, ...prev]);
 
